@@ -92,54 +92,10 @@
       cursor: pointer;
       margin-left: 8px;
     }
-
-    .login-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.76);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .login-box {
-      width: 100%;
-      max-width: 380px;
-      background: white;
-      border-radius: 16px;
-      padding: 24px;
-      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.24);
-      text-align: center;
-    }
-
-    .login-box h3 {
-      margin: 0 0 14px;
-      font-size: 1.3rem;
-    }
-
-    .login-box input {
-      margin-bottom: 12px;
-    }
-
-    .login-box button {
-      width: 100%;
-      margin-top: 10px;
-    }
   </style>
 </head>
 <body>
 
-<div id="loginOverlay" class="login-overlay">
-  <div class="login-box">
-    <h3 id="loginHeading">Login to Parts Inventory</h3>
-    <input type="password" id="passwordInput" placeholder="Enter password" autocomplete="new-password">
-    <button id="loginButton" onclick="handleLogin()">Continue</button>
-    <p id="loginHelp" style="font-size:0.95rem; color:#555; margin-top:14px; line-height:1.4;"></p>
-  </div>
-</div>
-
-<div id="appContent" style="display:none;">
 <div class="container">
   <div class="logo-container">
     <a href="https://www.vecteezy.com/vector-art/9645252-gear-and-wrench-icon-logo-vector-illustration-service-tool-symbol-template-for-graphic-and-web-design-collection" target="_blank" rel="noopener noreferrer">
@@ -172,32 +128,10 @@
     <tbody id="partsTable"></tbody>
   </table>
 </div>
-</div>
 
 <script>
   let parts = JSON.parse(localStorage.getItem("parts")) || [];
   let editIndex = null;
-  let nextPartNumber = Number(localStorage.getItem("nextPartNumber")) || 1;
-
-  function formatPartNumber(number) {
-    return `P${String(number).padStart(3, "0")}`;
-  }
-
-  function deriveNextPartNumber(existingParts) {
-    let maxNumber = 0;
-    existingParts.forEach((part) => {
-      const match = String(part.number).match(/(\d+)$/);
-      if (match) {
-        maxNumber = Math.max(maxNumber, Number(match[1]));
-      }
-    });
-    return maxNumber + 1;
-  }
-
-  if (!localStorage.getItem("nextPartNumber")) {
-    nextPartNumber = deriveNextPartNumber(parts);
-    localStorage.setItem("nextPartNumber", nextPartNumber);
-  }
 
   function renderParts() {
     const table = document.getElementById("partsTable");
@@ -238,13 +172,9 @@
     }
 
     if (editIndex !== null) {
-      const currentPart = parts[editIndex];
-      parts[editIndex] = { name, number: currentPart.number, qty, storage };
+      parts[editIndex] = { name, qty, storage };
     } else {
-      const number = formatPartNumber(nextPartNumber);
-      parts.push({ name, number, qty, storage });
-      nextPartNumber += 1;
-      localStorage.setItem("nextPartNumber", nextPartNumber);
+      parts.push({ name, qty, storage });
     }
 
     resetForm();
@@ -275,89 +205,7 @@
     resetForm();
   }
 
-  function toHex(buffer) {
-    return Array.from(new Uint8Array(buffer))
-      .map((byte) => byte.toString(16).padStart(2, "0"))
-      .join("");
-  }
-
-  async function hashPassword(password, salt) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(salt + password);
-    const digest = await crypto.subtle.digest("SHA-256", data);
-    return toHex(digest);
-  }
-
-  function randomSalt() {
-    const saltArray = new Uint8Array(16);
-    crypto.getRandomValues(saltArray);
-    return toHex(saltArray);
-  }
-
-  async function handleLogin() {
-    const passwordInput = document.getElementById("passwordInput");
-    const helpText = document.getElementById("loginHelp");
-    const password = passwordInput.value.trim();
-    if (!password) {
-      helpText.textContent = "Enter a password to continue.";
-      return;
-    }
-
-    const storedHash = localStorage.getItem("partsInventoryHash");
-    const storedSalt = localStorage.getItem("partsInventorySalt");
-
-    if (storedHash && storedSalt) {
-      const hash = await hashPassword(password, storedSalt);
-      if (hash === storedHash) {
-        localStorage.setItem("partsInventoryLoggedIn", "true");
-        showApp();
-      } else {
-        helpText.textContent = "Incorrect password. Try again.";
-      }
-      return;
-    }
-
-    const salt = randomSalt();
-    const hash = await hashPassword(password, salt);
-    localStorage.setItem("partsInventoryHash", hash);
-    localStorage.setItem("partsInventorySalt", salt);
-    localStorage.setItem("partsInventoryLoggedIn", "true");
-    helpText.textContent = "Password created. You can now access the inventory.";
-    showApp();
-  }
-
-  function showApp() {
-    document.getElementById("loginOverlay").style.display = "none";
-    document.getElementById("appContent").style.display = "block";
-  }
-
-  function initLogin() {
-    const storedHash = localStorage.getItem("partsInventoryHash");
-    const heading = document.getElementById("loginHeading");
-    const helpText = document.getElementById("loginHelp");
-    const passwordInput = document.getElementById("passwordInput");
-
-    if (storedHash) {
-      heading.textContent = "Login to Parts Inventory";
-      helpText.textContent = "Enter your password to unlock the inventory.";
-    } else {
-      heading.textContent = "Create a password";
-      helpText.textContent = "Choose a strong password that only you know.";
-    }
-
-    passwordInput.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        handleLogin();
-      }
-    });
-
-    if (localStorage.getItem("partsInventoryLoggedIn") === "true") {
-      showApp();
-    }
-  }
-
   // initial load
-  initLogin();
   resetForm();
   renderParts();
 </script>
